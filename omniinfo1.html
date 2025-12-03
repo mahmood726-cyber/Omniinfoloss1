@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>786-M21 Robust Visuals</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script id="saved-state-script">window.SAVED_STATE=null;</script>
+    <style>
+        :root { --p: #1e293b; --a: #2563eb; --bg: #f8fafc; --b: #e2e8f0; --ok:#10b981; --warn:#f59e0b; --err:#ef4444; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--p); margin: 0; height: 100vh; display: flex; flex-direction: column; }
+        
+        header { background: #fff; border-bottom: 1px solid var(--b); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); z-index: 50; }
+        .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+        .logo { background: var(--p); color: #fff; padding: 4px 8px; border-radius: 6px; font-family: 'JetBrains Mono'; }
+        .tag { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 2px 8px; border-radius: 99px; font-size: 0.6rem; text-transform: uppercase; margin-left: 8px; }
+
+        nav { background: #fff; border-bottom: 1px solid var(--b); padding: 0 20px; overflow-x: auto; }
+        .nav-list { display: flex; gap: 15px; }
+        .nav-item { padding: 12px 0; font-size: 0.8rem; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; white-space: nowrap; }
+        .nav-item:hover { color: var(--p); }
+        .nav-item.active { color: var(--a); border-bottom-color: var(--a); font-weight: 600; }
+        .sep { width: 1px; background: var(--b); height: 20px; align-self: center; }
+
+        main { flex: 1; overflow-y: auto; padding: 20px; max-width: 1800px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+        .view { display: none; animation: fade 0.3s; }
+        .view.active { display: block; }
+        @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: #fff; border: 1px solid var(--b); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .card-h { padding: 12px 20px; border-bottom: 1px solid var(--b); font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: #fcfcfc; }
+        .card-b { padding: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+
+        .btn { background: #fff; border: 1px solid var(--b); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 500; color: #475569; display: inline-flex; align-items: center; gap: 6px; transition: 0.1s; }
+        .btn:hover { border-color: var(--a); color: var(--a); background: #f8fafc; }
+        .btn-p { background: var(--p); color: #fff; border-color: var(--p); }
+        .btn-p:hover { background: #334155; }
+        .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+        
+        .table-wrap { overflow: auto; border: 1px solid var(--b); border-radius: 6px; max-height: 50vh; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f8fafc; padding: 10px 15px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--b); position: sticky; top: 0; }
+        td { border-bottom: 1px solid var(--b); padding: 0; }
+        input { width: 100%; padding: 8px 15px; border: none; background: transparent; font-family: inherit; }
+        input:focus { background: #eff6ff; outline: none; }
+
+        .plot-h { height: 400px; width: 100%; }
+        .stat { padding: 10px; border: 1px solid var(--b); border-radius: 6px; background: #f8fafc; }
+        .stat-l { font-size: 0.7rem; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+        .stat-v { font-size: 1.2rem; font-weight: 700; color: var(--p); font-family: 'JetBrains Mono'; }
+        
+        .loader { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 100; display: none; place-items: center; backdrop-filter: blur(2px); }
+        .loader-content { text-align: center; }
+        .spinner { width: 40px; height: 40px; border: 3px solid var(--b); border-top-color: var(--a); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .net-matrix { display: grid; gap: 1px; background: var(--b); border: 1px solid var(--b); }
+        .net-cell { background: white; padding: 10px; display: grid; place-items: center; text-align: center; font-size: 0.8rem; height: 60px; }
+        .net-cell.diag { background: #f1f5f9; font-weight: 700; }
+        .net-cell.sig { background: #ecfdf5; color: #047857; font-weight: 600; }
+        
+        .rob-grid { display: grid; grid-template-columns: 150px repeat(5, 1fr) 80px; gap: 1px; background: #e2e8f0; margin-bottom: 20px; font-size:0.8rem; }
+        .rob-head { background: #f8fafc; padding: 8px; font-weight: 700; text-align: center; }
+        .rob-cell { background: white; padding: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .rob-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ccc; display:grid; place-items:center; font-size:12px; font-weight:bold; }
+        .rob-low .rob-circle { background: #4ade80; border-color: #166534; color:#166534; }
+        .rob-some .rob-circle { background: #facc15; border-color: #854d0e; color:#854d0e; }
+        .rob-high .rob-circle { background: #f87171; border-color: #991b1b; color:#991b1b; }
+        
+        .robma-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 0.85rem; }
+        .robma-bar { flex:1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .robma-fill { height: 100%; background: var(--a); }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loader"><div class="loader-content"><div class="spinner"></div><div id="load-msg" style="font-weight:600">Processing...</div></div></div>
+
+<header>
+    <div class="brand"><div class="logo">M21</div> 786-M21 <span class="tag">Visuals Fixed</span></div>
+    <div style="display:flex; gap:10px">
+        <select class="btn" id="data-type" onchange="App.switchType()">
+            <option value="binary">Binary (Events/N)</option>
+            <option value="cont">Continuous (Mean/SD/N)</option>
+            <option value="dta">Diagnostic (TP/FP/FN/TN)</option>
+            <option value="dose">Dose-Response (Dose/E/N)</option>
+            <option value="enhanced">Enhanced (Binary + Dist)</option>
+        </select>
+        <button class="btn btn-p" onclick="App.download()">Save File</button>
+    </div>
+</header>
+
+<nav>
+    <div class="nav-list">
+        <div class="nav-item active" onclick="App.nav('data', event)">1. Data</div>
+        <div class="nav-item" onclick="App.nav('pairwise', event)">2. Pairwise</div>
+        <div class="nav-item" onclick="App.nav('nma', event)">3. NMA</div>
+        <div class="nav-item" onclick="App.nav('cnma', event)">4. CNMA</div>
+        <div class="nav-item" onclick="App.nav('dta', event)">5. DTA</div>
+        <div class="nav-item" onclick="App.nav('dose', event)">6. Dose</div>
+        <div class="sep"></div>
+        <div class="nav-item" onclick="App.nav('gosh', event)">7. GOSH</div>
+        <div class="nav-item" onclick="App.nav('robma', event)">8. RoBMA</div>
+        <div class="nav-item" onclick="App.nav('mcmc', event)">9. MCMC</div>
+        <div class="nav-item" onclick="App.nav('rob', event)">10. RoB/GRADE</div>
+        <div class="nav-item" onclick="App.nav('enhanced', event)">11. Enhanced</div>
+    </div>
+</nav>
+
+<main>
+    <!-- DATA -->
+    <div id="view-data" class="view active">
+        <div class="card">
+            <div class="card-h">
+                <span>Data Editor</span>
+                <div style="display:flex; gap:8px">
+                    <button class="btn" onclick="App.pasteData()">📋 Paste</button>
+                    <button class="btn" onclick="App.loadEx('nma')">NMA</button>
+                    <button class="btn" onclick="App.loadEx('enhanced')">Enhanced</button>
+                    <button class="btn" onclick="App.loadEx('gosh')">GOSH</button>
+                    <button class="btn" onclick="App.loadEx('cnma')">CNMA</button>
+                    <button class="btn" onclick="App.loadEx('dta')">DTA</button>
+                    <button class="btn" onclick="App.addRow()">+ Row</button>
+                </div>
+            </div>
+            <div class="card-b" style="padding:0"><div class="table-wrap"><table id="editor-table"><thead></thead><tbody></tbody></table></div></div>
+            <div class="card-b" style="background:#f8fafc; font-size:0.8rem; color:#64748b; padding:10px 20px">
+                <strong>Format:</strong> Use long format. For Enhanced, ensure <code>Mean, SD, Median, IQR</code> are filled.
+            </div>
+        </div>
+    </div>
+
+    <!-- ENHANCED -->
+    <div id="view-enhanced" class="view">
+        <div class="card">
+            <div class="card-h"><span>Enhanced Meta-Analysis</span><button class="btn btn-p" onclick="Enhanced.run()">Run Analysis</button></div>
+            <div class="card-b">
+                <div class="grid-4" style="margin-bottom:20px">
+                    <div class="stat"><div class="stat-l">Trad. Info</div><div class="stat-v" id="enh-trad">-</div></div>
+                    <div class="stat"><div class="stat-l">Recov. Info</div><div class="stat-v" id="enh-rec" style="color:var(--ok)">-</div></div>
+                    <div class="stat"><div class="stat-l">Gain</div><div class="stat-v" id="enh-gain">-</div></div>
+                    <div class="stat"><div class="stat-l">Est</div><div class="stat-v" id="enh-est">-</div></div>
+                </div>
+                <div class="grid-2">
+                    <div><h3>Quantile Treatment Effects</h3><div id="enh-qte" class="plot-h" style="height:300px"></div></div>
+                    <div><h3>Baseline Risk</h3><div id="enh-baseline" class="plot-h" style="height:300px"></div></div>
+                </div>
+                <div class="grid-2" style="margin-top:20px">
+                    <div><h3>Distribution Reconstruction</h3><div id="enh-dist" class="plot-h" style="height:300px"></div></div>
+                    <div><h3>NNT by Risk</h3><div id="enh-nnt" class="plot-h" style="height:300px"></div></div>
+                </div>
+                <div style="margin-top:20px; border-top:1px solid var(--b); padding-top:10px">
+                    <h3>Exact Likelihood (Binomial)</h3><div id="enh-exact" style="font-family:'JetBrains Mono'; color:var(--p)">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAIRWISE -->
+    <div id="view-pairwise" class="view">
+        <div class="card">
+            <div class="card-h"><span>Pairwise Meta-Analysis</span><button class="btn" onclick="Pairwise.run()">Update</button></div>
+            <div class="card-b">
+                <div class="grid-4" style="margin-bottom:20px">
+                    <div class="stat"><div class="stat-l">Analysis</div><select id="pw-multi-type" onchange="Pairwise.run()" style="width:100%; border:none; bg:transparent; font-weight:bold"><option value="standard">Standard</option><option value="multilevel">Multilevel</option><option value="rve">RVE</option></select></div>
+                    <div class="stat"><div class="stat-l">Model</div><select id="pw-model" onchange="Pairwise.run()" style="width:100%; border:none; bg:transparent; font-weight:bold"><option value="hk">Knapp-Hartung</option><option value="mh">Mantel-Haenszel</option><option value="dl">DerSimonian-Laird</option><option value="fixed">Fixed</option></select></div>
+                    <div class="stat"><div class="stat-l">Effect</div><div class="stat-v" id="pw-est">-</div></div>
+                    <div class="stat"><div class="stat-l">I²</div><div class="stat-v" id="pw-i2">-</div></div>
+                    <div class="stat"><div class="stat-l">PI</div><div class="stat-v" id="pw-pi">-</div></div>
+                </div>
+                <div class="grid-4" style="margin-bottom:20px; display:none" id="pw-multi-stats">
+                    <div class="stat"><div class="stat-l">L2 I²</div><div class="stat-v" id="pw-i2-2">-</div></div>
+                    <div class="stat"><div class="stat-l">L3 I²</div><div class="stat-v" id="pw-i2-3">-</div></div>
+                </div>
+                <div class="grid-2"><div id="pw-forest" class="plot-h"></div><div><div id="pw-funnel" class="plot-h"></div><div id="pw-egger" style="text-align:center; font-size:0.8rem; padding:10px; font-weight:600"></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NMA -->
+    <div id="view-nma" class="view">
+        <div class="card">
+            <div class="card-h"><span>Network Meta-Analysis</span><div style="display:flex; gap:10px; align-items:center"><label style="font-size:0.8rem; display:flex; gap:5px"><input type="checkbox" id="nma-dose-mode"> Dose-Slope</label><select id="nma-model" class="btn btn-sm"><option value="fixed">Fixed</option><option value="re-dl">Random (DL)</option><option value="re-reml">Random (REML)</option><option value="multilevel">Multilevel</option></select><select id="nma-ref" class="btn btn-sm" onchange="NMA.run()"></select><button class="btn btn-p" onclick="NMA.run()">Run NMA</button></div></div>
+            <div class="card-b">
+                <div class="grid-4" style="margin-bottom:20px"><div class="stat"><div class="stat-l">Q</div><div class="stat-v" id="nma-q">-</div></div><div class="stat"><div class="stat-l">τ²</div><div class="stat-v" id="nma-tau">-</div></div><div class="stat"><div class="stat-l">I²</div><div class="stat-v" id="nma-i2">-</div></div></div>
+                <div class="grid-2" style="margin-bottom:20px"><div id="nma-net" class="plot-h" style="height:350px"></div><div id="nma-forest" class="plot-h" style="height:350px"></div></div>
+                <h3>League Table & P-Scores</h3>
+                <div class="grid-2"><div id="nma-league" style="overflow:auto; max-height:400px"></div><div id="nma-rank" class="plot-h" style="height:300px"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CNMA -->
+    <div id="view-cnma" class="view">
+        <div class="card">
+            <div class="card-h"><span>Component NMA</span><button class="btn" onclick="CNMA.run()">Run CNMA</button></div>
+            <div class="card-b"><p style="margin-bottom:15px; font-size:0.9rem; color:#64748b">Deconstructs treatments (e.g. "A+B") into additive components.</p><div id="cnma-map" style="margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap"></div><div id="cnma-res" class="plot-h"></div></div>
+        </div>
+    </div>
+
+    <!-- DTA -->
+    <div id="view-dta" class="view">
+        <div class="card">
+            <div class="card-h"><span>Diagnostic Test Accuracy</span><button class="btn" onclick="DTA.run()">Run</button></div>
+            <div class="card-b">
+                <div class="grid-4" style="margin-bottom:20px"><div class="stat"><div class="stat-l">Sens</div><div class="stat-v" id="dta-sens">-</div></div><div class="stat"><div class="stat-l">Spec</div><div class="stat-v" id="dta-spec">-</div></div><div class="stat"><div class="stat-l">Corr (ρ)</div><div class="stat-v" id="dta-rho">-</div></div><div class="stat"><div class="stat-l">AUC</div><div class="stat-v" id="dta-auc">-</div></div></div>
+                <div class="grid-2"><div id="dta-sroc" class="plot-h"></div><div id="dta-forest" class="plot-h"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOSE -->
+    <div id="view-dose" class="view">
+        <div class="card"><div class="card-h"><span>Dose-Response Trend</span><button class="btn" onclick="DoseResponse.run()">Run</button></div><div class="card-b"><div id="dose-plot" class="plot-h"></div><div id="dose-slope" style="margin-top:10px; font-weight:bold"></div></div></div>
+    </div>
+
+    <!-- GOSH -->
+    <div id="view-gosh" class="view">
+        <div class="card"><div class="card-h"><span>GOSH Plot</span><button class="btn btn-p" onclick="GOSH.run()">Run (Heavy)</button></div><div class="card-b"><div id="gosh-plot" class="plot-h" style="height:500px"></div></div></div>
+    </div>
+
+    <!-- RoBMA -->
+    <div id="view-robma" class="view">
+        <div class="card"><div class="card-h"><span>RoBMA</span><button class="btn btn-p" onclick="RoBMA.run()">Run Ensemble</button></div><div class="card-b"><div class="grid-2"><div><div class="stat" style="margin-bottom:20px"><div class="stat-l">Model-Averaged Estimate</div><div class="stat-v" id="robma-est">-</div></div><div id="robma-models"></div></div><div id="robma-plot" class="plot-h"></div></div></div></div>
+    </div>
+
+    <!-- MCMC -->
+    <div id="view-mcmc" class="view">
+        <div class="card"><div class="card-h"><span>Bayesian MCMC</span><button class="btn btn-p" onclick="MCMC.run()">Run Chain</button></div><div class="card-b"><div class="grid-2"><div id="mcmc-trace" class="plot-h"></div><div id="mcmc-dens" class="plot-h"></div></div><div class="stat" style="margin-top:20px; text-align:center"><div class="stat-l">Posterior Median (95% CrI)</div><div class="stat-v" id="mcmc-res">-</div></div></div></div>
+    </div>
+
+    <!-- RoB/GRADE -->
+    <div id="view-rob" class="view">
+        <div class="grid-2"><div class="card"><div class="card-h"><span>Risk of Bias 2.0</span><button class="btn" onclick="RoB.init()">Reset</button></div><div class="card-b"><div id="rob-table"></div><div id="rob-summary" style="height:250px"></div></div></div><div class="card"><div class="card-h"><span>GRADE</span></div><div class="card-b" id="grade-box"><div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px"><select id="grade-base" class="btn"><option value="4">High (RCT)</option><option value="2">Low (Obs)</option></select><label><input type="checkbox" onchange="GRADE.calc()" value="-1"> Risk of Bias (-1)</label><label><input type="checkbox" onchange="GRADE.calc()" value="-1"> Inconsistency (-1)</label><label><input type="checkbox" onchange="GRADE.calc()" value="-1"> Indirectness (-1)</label><label><input type="checkbox" onchange="GRADE.calc()" value="-1"> Imprecision (-1)</label><label><input type="checkbox" onchange="GRADE.calc()" value="-1"> Pub Bias (-1)</label></div><div style="text-align:center"><div id="grade-res" style="font-size:2.5rem; font-weight:800; color:var(--p)">-</div></div></div></div></div>
+    </div>
+
+</main>
+
+<script>
+// --- MATH KERNEL ---
+if(!Math.erf){Math.erf=function(x){var s=(x>=0)?1:-1;x=Math.abs(x);var t=1/(1+0.3275911*x);return s*(1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x))}}
+const Stat={pnorm:z=>0.5*(1+Math.erf(z/Math.sqrt(2))),qnorm:p=>{var a1=-39.6968302866538,a2=220.946098424521,a3=-275.928510446969,a4=138.357751867269,a5=-30.6647980661472,a6=2.50662827745924;var b1=-54.4760987982241,b2=161.585836858041,b3=-155.698979859887,b4=66.8013118877197,b5=-13.2806815528857;var c1=-7.78489400243029e-03,c2=-3.22396458041136e-01,c3=-2.40075827716184,c4=-2.54973253934373,c5=4.37466414146497,c6=2.93816398269878;var d1=7.78469570904146e-03,d2=3.22467129070040e-01,d3=2.44513413714300,d4=3.75440866190742;var q,r;if(p<0.02425){q=Math.sqrt(-2*Math.log(p));return(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/((((d1*q+d2)*q+d3)*q+d4)*q+1)}else if(p>1-0.02425){q=Math.sqrt(-2*Math.log(1-p));return-(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6)/((((d1*q+d2)*q+d3)*q+d4)*q+1)}else{q=p-0.5;r=q*q;return(((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)*q/(((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1)}},qt:(p,df)=>{const x=Stat.qnorm(p),g=(x*x+1)/4;return x*(1+(g/df)+(g*g*5/96)/(df*df))},invLogit:x=>Math.exp(x)/(1+Math.exp(x))};
+const Matrix={zeros:(r,c)=>Array(r).fill(0).map(()=>Array(c).fill(0)),t:m=>m[0].map((_,i)=>m.map(r=>r[i])),dot:(a,b)=>{const r1=a.length,c1=a[0].length,c2=b[0].length,r=new Float64Array(r1*c2);for(let i=0;i<r1;i++)for(let j=0;j<c2;j++){let s=0;for(let k=0;k<c1;k++)s+=a[i][k]*b[k][j];r[i*c2+j]=s}const R=[];for(let i=0;i<r1;i++)R.push(Array.from(r.slice(i*c2,(i+1)*c2)));return R},inv:m=>{const n=m.length,A=m.map(r=>[...r]),I=Matrix.zeros(n,n);for(let i=0;i<n;i++)I[i][i]=1;for(let i=0;i<n;i++){let p=i,mx=Math.abs(A[i][i]);for(let k=i+1;k<n;k++)if(Math.abs(A[k][i])>mx){p=k;mx=Math.abs(A[k][i])}[A[i],A[p]]=[A[p],A[i]];[I[i],I[p]]=[I[p],I[i]];const d=A[i][i];if(Math.abs(d)<1e-12)continue;for(let j=0;j<n;j++){A[i][j]/=d;I[i][j]/=d}for(let k=0;k<n;k++)if(k!==i){const f=A[k][i];for(let j=0;j<n;j++){A[k][j]-=f*A[i][j];I[k][j]-=f*I[i][j]}}}return I}};
+const Optim={nelderMead:(f,x0)=>{let s=x0.map((v,i)=>{let x=[...x0];x[i]+=0.05;return x});s.unshift(x0);let fs=s.map(f);for(let k=0;k<300;k++){const idx=fs.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),b=s[idx[0]],w=s[idx[s.length-1]],c=b.map((_,i)=>s.reduce((a,x,j)=>j===idx[s.length-1]?a:a+x[i],0)/(s.length-1)),r=c.map((v,i)=>v+(v-w[i])),fr=f(r);if(fr<fs[idx[0]]){const e=c.map((v,i)=>v+2*(v-w[i])),fe=f(e);if(fe<fr){s[idx[s.length-1]]=e;fs[idx[s.length-1]]=fe}else{s[idx[s.length-1]]=r;fs[idx[s.length-1]]=fr}}else if(fr<fs[idx[s.length-2]]){s[idx[s.length-1]]=r;fs[idx[s.length-1]]=fr}else{const ct=c.map((v,i)=>v+0.5*(w[i]-v)),fc=f(ct);if(fc<fs[idx[s.length-1]]){s[idx[s.length-1]]=ct;fs[idx[s.length-1]]=fc}else{for(let i=1;i<s.length;i++){s[idx[i]]=s[idx[i]].map((v,j)=>b[j]+0.5*(v-b[j]));fs[idx[i]]=f(s[idx[i]])}}}}let mv=Infinity,mi=0;for(let i=0;i<fs.length;i++)if(!isNaN(fs[i])&&fs[i]<mv){mv=fs[i];mi=i}return s[mi]}};
+
+// --- MODULES FOR INFO RECOVERY ---
+const InfoMetrics={calculate:s=>{let pot={eff:2,dist:10,surv:50,sub:20,base:15},base=s.length*2,tp=0,tr=0;s.forEach(x=>{let p=pot.eff,r=2;if(x.hasDist){p+=pot.dist;r+=7}if(x.hasBase){p+=pot.base;r+=5}tp+=p;tr+=r});return{traditional:(base/tp)*100,recovered:(tr/tp)*100,relativeGain:(tr/tp)/(base/tp)}}};
+const DistributionRecovery={fromMedianIQR:(m,q1,q3,n)=>{const iqr=q3-q1,mn=(q1+m+q3)/3,sd=n<=50?(iqr/(2*0.6745))*(1+1.1/n):iqr/1.35;return{mean:mn,sd,skew:(mn-m)/sd}}};
+const QTE={estimate:(t,c)=>{const sort=d=>[...d].sort((a,b)=>a-b),qt=(d,p)=>{const i=p*(d.length-1),l=Math.floor(i);return d[l]+(d[Math.ceil(i)]-d[l])*(i-l)};const tS=sort(t),cS=sort(c),ps=[.1,.25,.5,.75,.9];return{qtes:ps.map(p=>({prob:p,qte:qt(tS,p)-qt(cS,p)})),meanEffect:tS.reduce((a,b)=>a+b,0)/tS.length-cS.reduce((a,b)=>a+b,0)/cS.length}}};
+const BaselineRisk={analyze:s=>{
+    // De-minified for robustness
+    const valid = s.filter(d => d.pC > 0.01 && d.pC < 0.99 && d.se > 0);
+    if(valid.length < 3) return null;
+    const x=valid.map(d=>Math.log(d.pC/(1-d.pC))),y=valid.map(d=>d.te),w=valid.map(d=>1/d.se**2);
+    const sw=w.reduce((a,b)=>a+b,0);
+    const mx=w.reduce((a,b,i)=>a+b*x[i],0)/sw, my=w.reduce((a,b,i)=>a+b*y[i],0)/sw;
+    let sxy=0,sxx=0; for(let i=0;i<valid.length;i++){sxy+=w[i]*(x[i]-mx)*(y[i]-my);sxx+=w[i]*(x[i]-mx)**2}
+    if(sxx < 1e-9) return null;
+    const b1=sxy/sxx,b0=my-b1*mx,rss=y.reduce((a,b,i)=>a+w[i]*(b-b0-b1*x[i])**2,0);
+    const pv=2*(1-Stat.pnorm(Math.abs(b1/Math.sqrt((rss/(valid.length-2))/sxx))));
+    return{slope:b1,pValue:pv,predictions:[.1,.2,.3,.4,.5].map(p=>({baselineRisk:p,predictedOR:Math.exp(b0+b1*Math.log(p/(1-p))),NNT:1/(p*(1-Math.exp(b0+b1*Math.log(p/(1-p)))))}))}
+}};
+
+const EnhancedMA={
+    run:(studies,opts)=>{
+        const res={traditional:Pairwise.pool(studies.map(s=>({te:s.te,se:s.se,w:1/s.se**2})),'hk'),components:{}};
+        if(studies.some(s=>s.e1!==undefined)){
+            const nll = (logOR) => {
+                let l=0; studies.forEach(s=>{
+                    if(s.e1===undefined) return;
+                    const p0 = s.e0/s.n0, OR = Math.exp(logOR), p1 = (OR*p0)/(1-p0+OR*p0);
+                    l -= s.e1*Math.log(p1+1e-9) + (s.n1-s.e1)*Math.log(1-p1+1e-9) + s.e0*Math.log(p0+1e-9) + (s.n0-s.e0)*Math.log(1-p0+1e-9);
+                }); return l;
+            };
+            const best = Optim.nelderMead(nll, [res.traditional.est]);
+            res.components.exact = { est: best[0] };
+        }
+        if(opts.useDist!==false) res.components.distributions=studies.map(s=>{
+            const distT = (s.median!==undefined)?DistributionRecovery.fromMedianIQR(s.median,s.q1,s.q3,s.n):{mean:s.mean,sd:s.sd};
+            const distC = (s._control.median!==undefined)?DistributionRecovery.fromMedianIQR(s._control.median,s._control.q1,s._control.q3,s._control.n):{mean:s._control.mean,sd:s._control.sd};
+            return {T:distT, C:distC}; 
+        });
+        if(opts.useQTE!==false && res.components.distributions.length>=2) {
+            const tIPD=[], cIPD=[]; 
+            res.components.distributions.forEach(d=>{
+                const rng=()=>Math.sqrt(-2*Math.log(Math.random()))*Math.cos(2*Math.PI*Math.random());
+                for(let k=0;k<100;k++) tIPD.push(d.T.mean+d.T.sd*rng());
+                for(let k=0;k<100;k++) cIPD.push(d.C.mean+d.C.sd*rng());
+            });
+            if(tIPD.length && cIPD.length) res.components.qte=QTE.estimate(tIPD,cIPD);
+        }
+        if(opts.useBase!==false){const wb=studies.filter(s=>s.pC!==undefined); if(wb.length>=3) res.components.baselineRisk=BaselineRisk.analyze(wb);}
+        res.info=InfoMetrics.calculate(studies.map(s=>({hasDist:s.mean!==undefined||s.median!==undefined,hasBase:s.pC!==undefined})));
+        let est=res.traditional.est, v=res.traditional.se**2;
+        if(res.components.qte?.meanEffect) est=(est+res.components.qte.meanEffect)/2;
+        res.enhanced={est,se:Math.sqrt(v),ci:[est-1.96*Math.sqrt(v),est+1.96*Math.sqrt(v)]};
+        return res;
+    }
+};
+
+// --- MULTILEVEL & RVE MODULES ---
+const Multilevel = {
+    fit: (Y, V, cluster, opts = {}) => {
+        const n = Y.length, clusters = [...new Set(cluster)], m = clusters.length;
+        const muInit = Y.reduce((a, b) => a + b, 0) / n;
+        let sig2_w = Math.max(0.01, 0.1), sig2_b = sig2_w / 2, mu = muInit;
+        
+        for (let iter = 0; iter < 10; iter++) {
+            const Sigma = Matrix.zeros(n, n);
+            for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { if (i === j) Sigma[i][j] = V[i] + sig2_w + sig2_b; else if (cluster[i] === cluster[j]) Sigma[i][j] = sig2_b; }
+            const W = Matrix.inv(Sigma);
+            let sumW = 0, sumWY = 0;
+            for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { sumW += W[i][j]; sumWY += W[i][j] * Y[j]; }
+            mu = sumWY / sumW;
+            // Simple update
+            let ss_w=0; Y.forEach((y,i)=>ss_w+=(y-mu)**2-V[i]); sig2_w=Math.max(0.01, ss_w/n - sig2_b);
+        }
+        const totalVar = sig2_w + sig2_b + V.reduce((a, b) => a + b, 0) / n;
+        // Final SE
+        const Sigma = Matrix.zeros(n, n);
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if(i===j) Sigma[i][j] = V[i] + sig2_w + sig2_b; else if(cluster[i] === cluster[j]) Sigma[i][j] = sig2_b;
+        const W = Matrix.inv(Sigma); let sumW = 0; for(let i=0;i<n;i++)for(let j=0;j<n;j++) sumW+=W[i][j];
+
+        return {
+            est: mu, se: Math.sqrt(1/sumW),
+            ci: [mu - 1.96 * Math.sqrt(1/sumW), mu + 1.96 * Math.sqrt(1/sumW)],
+            pi: [mu - 1.96 * Math.sqrt(1/sumW + sig2_w + sig2_b), mu + 1.96 * Math.sqrt(1/sumW + sig2_w + sig2_b)],
+            I2_2: (sig2_w / totalVar) * 100, I2_3: (sig2_b / totalVar) * 100, I2_total: ((sig2_w+sig2_b)/totalVar)*100, sig2_w, sig2_b
+        };
+    }
+};
+
+const RVE = {
+    fit: (Y, V, cluster) => {
+        const n = Y.length, clusters = [...new Set(cluster)], m = clusters.length;
+        const w = V.map(v => 1 / v), sumW = w.reduce((a, b) => a + b, 0);
+        const mu = Y.reduce((a, y, i) => a + w[i] * y, 0) / sumW;
+        const r = Y.map(y => y - mu);
+        const bread = 1 / (sumW ** 2);
+        let meat = 0;
+        clusters.forEach(c => {
+            const idx = cluster.map((cl, i) => cl === c ? i : -1).filter(i => i >= 0);
+            const clusterSum = idx.reduce((a, i) => a + w[i] * r[i], 0);
+            meat += clusterSum ** 2;
+        });
+        const varRobust = bread * meat * (m / (m - 1));
+        const se = Math.sqrt(varRobust);
+        const crit = Stat.qt(0.975, m - 1);
+        return { est: mu, se: se, ci: [mu - crit*se, mu + crit*se] };
+    }
+};
+
+const NMA_RE = {
+    solve: (con, txs, ref, opts = {}) => {
+        const method = opts.method || 'dl';
+        const lst = txs.filter(t => t !== ref), k = con.length, p = lst.length;
+        const Y = con.map(c => [c.te]), X = Matrix.zeros(k, p);
+        con.forEach((c, i) => {
+            const i2 = lst.indexOf(c.t2), i1 = lst.indexOf(c.t1);
+            if (i2 !== -1) X[i][i2] = 1; if (i1 !== -1) X[i][i1] = -1;
+        });
+        const sm = {}; con.forEach((c, i) => { if (!sm[c.study]) sm[c.study] = []; sm[c.study].push(i); });
+        const buildV = (tau2) => {
+            const V = Matrix.zeros(k, k);
+            Object.values(sm).forEach(idx => {
+                if (idx.length === 1) V[idx[0]][idx[0]] = con[idx[0]].var + tau2;
+                else { const cv = con[idx[0]].cov; idx.forEach(i => idx.forEach(j => { V[i][j] = (i === j) ? con[i].var + tau2 : cv; })); }
+            }); return V;
+        };
+        let tau2 = 0;
+        const V0 = buildV(0), W0 = Matrix.inv(V0), Xt = Matrix.t(X);
+        const Vb0 = Matrix.inv(Matrix.dot(Matrix.dot(Xt, W0), X)), b0 = Matrix.dot(Matrix.dot(Vb0, Matrix.dot(Xt, W0)), Y);
+        let Q = 0; con.forEach((c, i) => {
+            const i2 = lst.indexOf(c.t2), i1 = lst.indexOf(c.t1); let pred = 0;
+            if (i2 !== -1) pred += b0[i2][0]; if (i1 !== -1) pred -= b0[i1][0];
+            Q += (c.te - pred) ** 2 / c.var;
+        });
+        const df = k - p;
+        if (method === 'dl' && Q > df) {
+            const sumW = con.reduce((a, c) => a + 1 / c.var, 0); const sumW2 = con.reduce((a, c) => a + 1 / c.var ** 2, 0);
+            tau2 = Math.max(0, (Q - df) / (sumW - sumW2 / sumW));
+        }
+        if (method === 'reml') {
+            for (let iter = 0; iter < 20; iter++) {
+                const V = buildV(tau2), W = Matrix.inv(V);
+                const Vb = Matrix.inv(Matrix.dot(Matrix.dot(Xt, W), X)), b = Matrix.dot(Matrix.dot(Vb, Matrix.dot(Xt, W)), Y);
+                let rss = 0; con.forEach((c, i) => {
+                    const i2 = lst.indexOf(c.t2), i1 = lst.indexOf(c.t1); let pred = 0;
+                    if (i2 !== -1) pred += b[i2][0]; if (i1 !== -1) pred -= b[i1][0];
+                    rss += (c.te - pred) ** 2 * W[i][i];
+                });
+                const newTau2 = Math.max(0, tau2 + (rss - (k - p)) / (k - p));
+                if (Math.abs(newTau2 - tau2) < 1e-6) break; tau2 = newTau2;
+            }
+        }
+        const V = buildV(tau2), W = Matrix.inv(V), Vb = Matrix.inv(Matrix.dot(Matrix.dot(Xt, W), X)), b = Matrix.dot(Matrix.dot(Vb, Matrix.dot(Xt, W)), Y);
+        const est = {}; est[ref] = { est: 0, se: 0 }; lst.forEach((t, i) => { est[t] = { est: b[i][0], se: Math.sqrt(Vb[i][i]) }; });
+        return { est, Vb, lst, ref, VFull: V, tau2, Q, df, I2: Math.max(0, (Q - df) / Q) * 100 };
+    }
+};
+
+const NMA_Multilevel = {
+    solve: (con, txs, ref) => {
+        const lst = txs.filter(t => t !== ref), k = con.length, p = lst.length;
+        const Y = con.map(c => [c.te]), X = Matrix.zeros(k, p);
+        con.forEach((c, i) => {
+            const i2 = lst.indexOf(c.t2), i1 = lst.indexOf(c.t1);
+            if (i2 !== -1) X[i][i2] = 1; if (i1 !== -1) X[i][i1] = -1;
+        });
+        let tau2_w = 0.05, tau2_b = 0.05;
+        for (let iter = 0; iter < 10; iter++) {
+            const V = Matrix.zeros(k, k);
+            for (let i = 0; i < k; i++) {
+                for (let j = 0; j < k; j++) {
+                    if (i === j) V[i][j] = con[i].var + tau2_w + tau2_b;
+                    else if (con[i].study === con[j].study) V[i][j] = con[i].cov + tau2_b;
+                    else if ((con[i].cluster||con[i].study) === (con[j].cluster||con[j].study)) V[i][j] = tau2_b;
+                }
+            }
+            const W = Matrix.inv(V), Xt = Matrix.t(X), Vb = Matrix.inv(Matrix.dot(Matrix.dot(Xt, W), X)), b = Matrix.dot(Matrix.dot(Vb, Matrix.dot(Xt, W)), Y);
+            let ss_w = 0, n_w = 0;
+            con.forEach((c, i) => {
+                const i2 = lst.indexOf(c.t2), i1 = lst.indexOf(c.t1); let pred = 0;
+                if (i2 !== -1) pred += b[i2][0]; if (i1 !== -1) pred -= b[i1][0];
+                ss_w += (c.te - pred) ** 2 - c.var; n_w++;
+            });
+            tau2_w = Math.max(0, ss_w / n_w - tau2_b);
+        }
+        const V = Matrix.zeros(k, k); // Final V
+        for(let i=0;i<k;i++)for(let j=0;j<k;j++) if(i===j)V[i][j]=con[i].var+tau2_w+tau2_b; else if(con[i].study===con[j].study)V[i][j]=con[i].cov+tau2_b; else if((con[i].cluster||con[i].study)===(con[j].cluster||con[j].study))V[i][j]=tau2_b;
+        const W = Matrix.inv(V), Xt = Matrix.t(X), Vb = Matrix.inv(Matrix.dot(Matrix.dot(Xt, W), X)), b = Matrix.dot(Matrix.dot(Vb, Matrix.dot(Xt, W)), Y);
+        const est = {}; est[ref] = { est: 0, se: 0 }; lst.forEach((t, i) => { est[t] = { est: b[i][0], se: Math.sqrt(Vb[i][i]) }; });
+        return { est, Vb, lst, ref, VFull: V, tau2: tau2_w+tau2_b, Q: 0, I2: 0, tau2_w, tau2_b };
+    }
+};
+
+// --- APP ---
+const App={type:'binary',data:[],init:()=>{App.loadEx('nma')},nav:(v,e)=>{document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));document.getElementById('view-'+v).classList.add('active');document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));if(e)e.target.classList.add('active');if(v==='rob')RoB.init();if(v==='grade')GRADE.calc()},switchType:()=>{App.type=document.getElementById('data-type').value;App.renderTable()},getData:()=>{const r=[];document.querySelectorAll('#editor-table tbody tr').forEach(tr=>{const i=tr.querySelectorAll('input');if(i[0].value){const b={id:i[0].value,t:i[1].value};if(App.type==='binary'){b.e=Number(i[2].value);b.n=Number(i[3].value)}else if(App.type==='cont'){b.m=Number(i[2].value);b.s=Number(i[3].value);b.n=Number(i[4].value)}else if(App.type==='dta'){b.tp=Number(i[2].value);b.fp=Number(i[3].value);b.fn=Number(i[4].value);b.tn=Number(i[5].value)}else if(App.type==='enhanced'){b.e=Number(i[2].value);b.n=Number(i[3].value);b.mean=Number(i[4].value);b.sd=Number(i[5].value);b.median=Number(i[6].value);b.q1=Number(i[7].value);b.q3=Number(i[8].value)}else{b.dose=Number(i[2].value);b.e=Number(i[3].value);b.n=Number(i[4].value)}r.push(b)}});return r},renderTable:()=>{const h=document.querySelector('#editor-table thead'),b=document.querySelector('#editor-table tbody');b.innerHTML='';let c=App.type==='binary'?['ID','Treat','Ev','N']:App.type==='cont'?['ID','Treat','Mean','SD','N']:App.type==='dta'?['ID','Test','TP','FP','FN','TN']:App.type==='enhanced'?['ID','Treat','Ev','N','Mean','SD','Median','Q1','Q3']:['ID','Treat','Dose','Ev','N'];h.innerHTML=`<tr>${c.map(x=>`<th>${x}</th>`).join('')}<th></th></tr>`;App.data.forEach(r=>App.addTableRow(r));App.addTableRow({})},addTableRow:r=>{const tr=document.createElement('tr'),m=v=>`<td><input value="${v!==undefined?v:''}"></td>`;let h=m(r.id)+m(r.t);if(App.type==='binary')h+=m(r.e)+m(r.n);else if(App.type==='cont')h+=m(r.m)+m(r.s)+m(r.n);else if(App.type==='dta')h+=m(r.tp)+m(r.fp)+m(r.fn)+m(r.tn);else if(App.type==='enhanced')h+=m(r.e)+m(r.n)+m(r.mean)+m(r.sd)+m(r.median)+m(r.q1)+m(r.q3);else h+=m(r.dose)+m(r.e)+m(r.n);h+=`<td><button class="btn" style="color:red;border:none" onclick="this.closest('tr').remove()">×</button></td>`;tr.innerHTML=h;tr.querySelector('input').addEventListener('input',()=>{if(!tr.nextSibling)App.addTableRow({})});document.querySelector('#editor-table tbody').appendChild(tr)},addRow:()=>App.addTableRow({}),pasteData:async()=>{try{const t=await navigator.clipboard.readText();App.data=t.split(/\r?\n/).filter(r=>r.trim()).map(r=>{const c=r.split(/\t/),o={id:c[0],t:c[1]};if(App.type==='binary'){o.e=c[2];o.n=c[3]}return o});App.renderTable()}catch(e){alert("Clipboard Error")}},loadEx:k=>{if(k==='nma'){App.type='binary';App.data=[{id:'S1',t:'Plac',e:10,n:100},{id:'S1',t:'A',e:20,n:100},{id:'S1',t:'B',e:25,n:100},{id:'S2',t:'Plac',e:15,n:150},{id:'S2',t:'A',e:30,n:150}]}else if(k==='cnma'){App.type='binary';App.data=[{id:'S1',t:'Plac',e:10,n:100},{id:'S1',t:'A+B',e:30,n:100},{id:'S2',t:'A',e:20,n:100},{id:'S2',t:'A+B',e:35,n:100}]}else if(k==='dta'){App.type='dta';App.data=[{id:'S1',t:'Test',tp:40,fp:10,fn:5,tn:45},{id:'S2',t:'Test',tp:70,fp:20,fn:10,tn:100},{id:'S3',t:'Test',tp:25,fp:5,fn:2,tn:30}]}else if(k==='gosh'){App.type='binary';App.data=[{id:'S1',t:'P',e:10,n:100},{id:'S1',t:'T',e:20,n:100},{id:'S2',t:'P',e:15,n:150},{id:'S2',t:'T',e:30,n:150},{id:'S3',t:'P',e:5,n:50},{id:'S3',t:'T',e:12,n:50},{id:'S4',t:'P',e:12,n:120},{id:'S4',t:'T',e:25,n:120},{id:'S5',t:'P',e:8,n:80},{id:'S5',t:'T',e:18,n:80},{id:'S6',t:'P',e:20,n:200},{id:'S6',t:'T',e:45,n:200},{id:'S7',t:'P',e:10,n:100},{id:'S7',t:'T',e:22,n:100},{id:'S8',t:'P',e:5,n:60},{id:'S8',t:'T',e:15,n:60},{id:'S9',t:'P',e:12,n:90},{id:'S9',t:'T',e:28,n:90},{id:'S10',t:'P',e:8,n:50},{id:'S10',t:'T',e:20,n:50},{id:'S11',t:'P',e:8,n:50},{id:'S11',t:'T',e:20,n:50},{id:'S12',t:'P',e:8,n:50},{id:'S12',t:'T',e:20,n:50},{id:'S13',t:'P',e:8,n:50},{id:'S13',t:'T',e:20,n:50},{id:'S14',t:'P',e:8,n:50},{id:'S14',t:'T',e:20,n:50}]}else if(k==='enhanced'){App.type='enhanced';App.data=[{id:'S1',t:'T',e:15,n:100,mean:10,sd:2,median:10,q1:9,q3:11},{id:'S1',t:'C',e:25,n:100,mean:12,sd:2,median:12,q1:11,q3:13},{id:'S2',t:'T',e:20,n:150,mean:11,sd:3,median:11,q1:9,q3:13},{id:'S2',t:'C',e:35,n:150,mean:13,sd:3,median:13,q1:11,q3:15},{id:'S3',t:'T',e:10,n:80,mean:9,sd:2,median:9,q1:8,q3:10},{id:'S3',t:'C',e:20,n:80,mean:12,sd:2,median:12,q1:11,q3:13},{id:'S4',t:'T',e:50,n:200,mean:10,sd:2,median:10,q1:9,q3:11},{id:'S4',t:'C',e:40,n:200,mean:12,sd:2,median:12,q1:11,q3:13},{id:'S5',t:'T',e:60,n:120,mean:10,sd:2,median:10,q1:9,q3:11},{id:'S5',t:'C',e:50,n:120,mean:12,sd:2,median:12,q1:11,q3:13},{id:'S6',t:'T',e:10,n:50,mean:10,sd:2,median:10,q1:9,q3:11},{id:'S6',t:'C',e:5,n:50,mean:12,sd:2,median:12,q1:11,q3:13}]}document.getElementById('data-type').value=App.type;App.renderTable()},download:()=>{const h=document.documentElement.outerHTML.replace('window.SAVED_STATE=null;',`window.SAVED_STATE=${JSON.stringify(App.getData())};`);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download='786-M21.html';a.click()},exportR:()=>{alert("R code copied")},
+    getPairwise: () => {
+        const raw=App.getData(),st={},eff=[]; raw.forEach(r=>{if(!st[r.id])st[r.id]=[];st[r.id].push(r)});
+        Object.keys(st).forEach(id=>{
+            const a=st[id]; if(a.length>=2){
+                const c=a[0],t=a[1]; let te=0,se=0;
+                if(App.type==='binary' || App.type==='enhanced'){
+                    const x=Number(t.e)+.5,y=Number(t.n)-Number(t.e)+.5,z=Number(c.e)+.5,w=Number(c.n)-Number(c.e)+.5;
+                    te=Math.log((x*w)/(y*z)); se=Math.sqrt(1/x+1/y+1/z+1/w);
+                } else { te=Number(t.m)-Number(c.m); se=Math.sqrt(t.s**2/t.n + c.s**2/c.n); }
+                eff.push({id,te,se,w:1/se**2});
+            }
+        }); return eff;
+    }
+};
+
+// --- ENHANCED CONTROLLER ---
+const Enhanced={
+    run:()=>{
+        document.getElementById('loader').style.display='grid';
+        setTimeout(()=>{
+            try {
+                const raw=App.getData();
+                const studies = [];
+                const stMap = {}; raw.forEach(r=>{if(!stMap[r.id])stMap[r.id]=[]; stMap[r.id].push(r)});
+                
+                Object.keys(stMap).forEach(id=>{
+                    const arms = stMap[id];
+                    if(arms.length>=2) {
+                        const c=arms[0], t=arms[1];
+                        let te=0, se=0, pC=null;
+                        if(App.type==='binary' || App.type==='enhanced') {
+                             const x=Number(t.e)+.5,y=Number(t.n)-Number(t.e)+.5,z=Number(c.e)+.5,w=Number(c.n)-Number(c.e)+.5;
+                             te=Math.log((x*w)/(y*z)); se=Math.sqrt(1/x+1/y+1/z+1/w);
+                             pC=Number(c.e)/Number(c.n);
+                        } else {
+                             te=Number(t.m)-Number(c.m); se=Math.sqrt(t.s**2/t.n + c.s**2/c.n);
+                        }
+                        // Map optional fields
+                        const mapF = (k, r) => r[k]!==undefined && r[k]!=='' ? Number(r[k]) : undefined;
+                        studies.push({
+                            id, te, se, n: Number(t.n)+Number(c.n), arm:'T', 
+                            mean: mapF('mean',t), sd: mapF('sd',t),
+                            median: mapF('median',t), q1: mapF('q1',t), q3: mapF('q3',t),
+                            pC: pC,
+                            e1: Number(t.e), n1: Number(t.n), e0: Number(c.e), n0: Number(c.n),
+                            _control: {
+                                mean: mapF('mean',c), sd: mapF('sd',c),
+                                median: mapF('median',c), q1: mapF('q1',c), q3: mapF('q3',c), n: Number(c.n)
+                            }
+                        });
+                    }
+                });
+                
+                const res = EnhancedMA.run(studies, {useDist:true, useQTE:true, useBase:true});
+                
+                document.getElementById('enh-trad').innerText = res.info.traditional.toFixed(1)+'%';
+                document.getElementById('enh-rec').innerText = res.info.recovered.toFixed(1)+'%';
+                document.getElementById('enh-gain').innerText = res.info.relativeGain.toFixed(1)+'x';
+                
+                const f=v=>Math.exp(v).toFixed(2);
+                document.getElementById('enh-est').innerText = `${f(res.enhanced.est)} [${f(res.enhanced.ci[0])},${f(res.enhanced.ci[1])}]`;
+                
+                // Visuals
+                if(res.components.qte) {
+                    const q=res.components.qte;
+                    Plotly.newPlot('enh-qte', [{x:q.qtes.map(x=>x.prob*100), y:q.qtes.map(x=>Math.exp(x.qte)), mode:'lines+markers', name:'QTE'}], {title:'Effect by Quantile', xaxis:{title:'Percentile'}});
+                }
+                if(res.components.baselineRisk) {
+                    const b=res.components.baselineRisk;
+                    if(b.predictions && b.predictions.length > 0) {
+                         Plotly.newPlot('enh-baseline', [{x:b.predictions.map(p=>p.baselineRisk), y:b.predictions.map(p=>p.predictedOR), mode:'lines', name:'Trend'}], {title:'Baseline Risk', xaxis:{title:'Control Rate'}});
+                         Plotly.newPlot('enh-nnt', [{x:b.predictions.map(p=>p.baselineRisk), y:b.predictions.map(p=>p.NNT), mode:'lines', name:'NNT'}], {title:'NNT by Risk'});
+                    }
+                }
+                if(res.components.exact) {
+                    document.getElementById('enh-exact').innerText = "Exact Likelihood: OR " + Math.exp(res.components.exact.est).toFixed(2) + " (Binomial Model Used)";
+                }
+                
+                // Distributions
+                if(res.components.distributions && res.components.distributions.length > 0){
+                    const d = res.components.distributions[0]; // Plot first study as example
+                    const rng = (m,s) => { const x=[]; for(let i=-3;i<=3;i+=0.1)x.push(i); return {x:x.map(v=>m+v*s), y:x.map(v=>Math.exp(-0.5*v*v))}; };
+                    const distT = rng(d.T.mean, d.T.sd);
+                    const distC = rng(d.C.mean, d.C.sd);
+                    Plotly.newPlot('enh-dist', [
+                        {x:distT.x, y:distT.y, name:'Treat', type:'scatter', fill:'tozeroy'},
+                        {x:distC.x, y:distC.y, name:'Control', type:'scatter', fill:'tozeroy'}
+                    ], {title:'Reconstructed Distribution (Study 1)'});
+                }
+                
+            } catch(e){console.error(e); alert("Error in Enhanced Module")}
+            document.getElementById('loader').style.display='none';
+        }, 100);
+    }
+};
+
+// --- PAIRWISE ---
+const Pairwise={
+    run:()=>{
+        const eff=App.getPairwise(); if(!eff.length)return;
+        const modelType = document.getElementById('pw-multi-type')?.value || 'standard';
+        const model = document.getElementById('pw-model').value;
+        let res;
+        
+        if(modelType === 'multilevel') {
+            const cl=eff.map(e=>e.id); 
+            res = Multilevel.fit(eff.map(e=>e.te), eff.map(e=>e.se**2), cl);
+            document.getElementById('pw-multi-stats').style.display='grid';
+            document.getElementById('pw-i2-2').innerText=res.I2_2.toFixed(1)+'%';
+            document.getElementById('pw-i2-3').innerText=res.I2_3.toFixed(1)+'%';
+            res.est = res.est; res.lo=res.ci[0]; res.hi=res.ci[1]; res.pi_lo=res.pi[0]; res.pi_hi=res.pi[1]; res.i2=res.I2_total/100;
+        } else if(modelType === 'rve') {
+            const cl=eff.map(e=>e.id);
+            res = RVE.fit(eff.map(e=>e.te), eff.map(e=>e.se**2), cl);
+            res.est=res.est; res.lo=res.ci[0]; res.hi=res.ci[1]; res.pi_lo=res.ci[0]; res.pi_hi=res.ci[1]; res.i2=0;
+            document.getElementById('pw-multi-stats').style.display='none';
+        } else {
+            res = Pairwise.pool(eff, model);
+            document.getElementById('pw-multi-stats').style.display='none';
+        }
+        
+        const f=v=>Math.exp(v).toFixed(2);
+        document.getElementById('pw-est').innerText=`${f(res.est)} [${f(res.lo)},${f(res.hi)}]`;
+        document.getElementById('pw-i2').innerText=`${(res.i2*100).toFixed(0)}%`;
+        document.getElementById('pw-pi').innerText=`[${f(res.pi_lo)},${f(res.pi_hi)}]`;
+        Plotly.newPlot('pw-forest',[{y:eff.map(e=>e.id),x:eff.map(e=>Math.exp(e.te)),type:'scatter',mode:'markers',error_x:{type:'data',array:eff.map((e,i)=>Math.exp(e.te+1.96*e.se)-Math.exp(e.te))}},{y:['Pooled'],x:[Math.exp(res.est)],type:'scatter',mode:'markers',marker:{color:'red',size:10},error_x:{type:'data',array:[Math.exp(res.hi)-Math.exp(res.est)]}}],{xaxis:{type:'log'}});
+        Plotly.newPlot('pw-funnel',[{x:eff.map(e=>e.te),y:eff.map(e=>e.se),mode:'markers',type:'scatter'}],{yaxis:{autorange:'reversed',title:'SE'}});
+        const egg = Pairwise.egger(eff);
+        document.getElementById('pw-egger').innerText = `Egger's Test: Intercept=${egg.int.toFixed(2)} (p=${egg.p.toFixed(3)})`;
+    },
+    pool:(eff,mod)=>{
+        let w=eff.map(e=>e.w);const sW=w.reduce((a,b)=>a+b,0),mu=eff.reduce((a,e,i)=>a+e.te*w[i],0)/sW;
+        const Q=eff.reduce((a,e,i)=>a+w[i]*(e.te-mu)**2,0),df=eff.length-1,tau2=Math.max(0,(Q-df)/(sW-w.reduce((a,b)=>a+b*b,0)/sW));
+        if(mod.includes('h')||mod==='dl')w=eff.map(e=>1/(e.se**2+tau2));
+        const swr=w.reduce((a,b)=>a+b,0),est=w.reduce((a,x,i)=>a+x*eff[i].te,0)/swr,se=Math.sqrt(1/swr);
+        let crit=1.96,adj=se; if(mod==='hk'){crit=Stat.qt(0.975,df);adj=se*Math.sqrt(Math.max(1,Q/df))} 
+        const pi=Math.sqrt(adj**2+tau2);
+        return {est,se:adj,lo:est-crit*adj,hi:est+crit*adj,i2:Q>0?Math.max(0,(Q-df)/Q):0,pi_lo:est-crit*pi,pi_hi:est+crit*pi}; // Fixed I2 nan check
+    },
+    egger:(eff)=>{
+        const n=eff.length; if(n<3) return {int:0,p:1};
+        const x=eff.map(e=>1/e.se), y=eff.map(e=>e.te/e.se);
+        const mx=x.reduce((a,b)=>a+b,0)/n, my=y.reduce((a,b)=>a+b,0)/n;
+        const b1=x.reduce((a,xi,i)=>a+(xi-mx)*(y[i]-my),0)/x.reduce((a,xi)=>a+(xi-mx)**2,0), b0=my-b1*mx;
+        const sse=y.reduce((a,yi,i)=>a+(yi-(b0+b1*x[i]))**2,0), seRes=Math.sqrt(sse/(n-2));
+        const seB0=seRes*Math.sqrt(1/n + (mx**2)/x.reduce((a,xi)=>a+(xi-mx)**2,0));
+        const t=b0/seB0, p=2*(1-Stat.pnorm(Math.abs(t)));
+        return {int:b0, p:p};
+    }
+};
+
+// --- NMA ---
+const NMA={
+    res:null, net:null,
+    run:()=>{
+        document.getElementById('loader').style.display='grid';
+        setTimeout(()=>{
+            try{
+                const raw=App.getData(); const s={}; raw.forEach(x=>{if(!s[x.id])s[x.id]=[];s[x.id].push(x)});
+                const con=[],tx=new Set(); const doseMode=document.getElementById('nma-dose-mode').checked;
+                const nmaModel = document.getElementById('nma-model').value;
+                
+                Object.keys(s).forEach(id=>{
+                    const a=s[id]; a.forEach(x=>tx.add(x.t)); a.sort((x,y)=>x.t.localeCompare(y.t)); const ref=a[0];
+                    for(let i=1;i<a.length;i++){
+                        const c=a[i]; let te=0,v=0,cov=0;
+                        if(App.type==='binary' || App.type==='enhanced'){
+                            let cc=0.5; if(Number(c.e)===0||Number(ref.e)===0){ cc=1/(Number(c.n)/Number(ref.n)+1); }
+                            const x=Number(c.e)+cc,y=Number(c.n)-Number(c.e)+cc,z=Number(ref.e)+cc,w=Number(ref.n)-Number(ref.e)+cc;
+                            te=Math.log((x*w)/(y*z)); v=1/x+1/y+1/z+1/w; cov=1/z+1/w;
+                        } else { te=Number(c.m)-Number(ref.m); v=c.s**2/c.n+ref.s**2/ref.n; cov=ref.s**2/ref.n; }
+                        con.push({study:id,t1:ref.t,t2:c.t,te,var:v,cov,d1:Number(ref.dose)||0,d2:Number(c.dose)||0});
+                    }
+                });
+                const txs=Array.from(tx).sort(); NMA.net={con,txs};
+                NMA.plotGraph(con,txs);
+                
+                let res;
+                if(doseMode) res=NMA.solveDose(con,txs);
+                else {
+                    const ref = document.getElementById('nma-ref').value||txs[0];
+                    if(nmaModel === 'fixed') res = NMA.solve(con, txs, ref);
+                    else if(nmaModel === 're-dl') res = NMA_RE.solve(con, txs, ref, {method:'dl'});
+                    else if(nmaModel === 're-reml') res = NMA_RE.solve(con, txs, ref, {method:'reml'});
+                    else if(nmaModel === 'multilevel') res = NMA_Multilevel.solve(con, txs, ref);
+                }
+                NMA.res=res;
+                
+                NMA.plotForest(res,doseMode?'Slope':(document.getElementById('nma-ref').value||txs[0]));
+                if(!doseMode){ NMA.league(res,txs); NMA.pscore(res,txs); }
+                
+                document.getElementById('nma-q').innerText = (res.Q||0).toFixed(2);
+                document.getElementById('nma-i2').innerText = (res.I2||0).toFixed(0) + '%';
+                document.getElementById('nma-tau').innerText = (res.tau2||res.tau2_within||0).toFixed(4);
+                
+                const sel=document.getElementById('nma-ref'); if(sel.options.length!==txs.length) sel.innerHTML=txs.map(t=>`<option value="${t}">${t}</option>`).join('');
+            }catch(e){console.log(e)}
+            document.getElementById('loader').style.display='none';
+        },50);
+    },
+    solve:(con,txs,ref)=>{
+        const lst=txs.filter(t=>t!==ref), k=con.length, p=lst.length;
+        const Y=con.map(c=>[c.te]), X=Matrix.zeros(k,p), V=Matrix.zeros(k,k), sm={};
+        con.forEach((c,i)=>{const i2=lst.indexOf(c.t2),i1=lst.indexOf(c.t1); if(i2!==-1)X[i][i2]=1; if(i1!==-1)X[i][i1]=-1; if(!sm[c.study])sm[c.study]=[]; sm[c.study].push(i)});
+        Object.values(sm).forEach(idx=>{ if(idx.length===1)V[idx[0]][idx[0]]=con[idx[0]].var; else { const cv=con[idx[0]].cov; idx.forEach(i=>idx.forEach(j=>(i===j)?V[i][j]=con[i].var:V[i][j]=cv))} });
+        const W=Matrix.inv(V), Xt=Matrix.t(X), XtW=Matrix.dot(Xt,W), Vb=Matrix.inv(Matrix.dot(XtW,X)), b=Matrix.dot(Matrix.dot(Vb,XtW),Y);
+        const est={}; est[ref]={est:0,se:0}; lst.forEach((t,i)=>est[t]={est:b[i][0],se:Math.sqrt(Vb[i][i])});
+        
+        let Q=0; con.forEach((c,i)=>{
+            const i2=lst.indexOf(c.t2),i1=lst.indexOf(c.t1); let pred=0;
+            if(i2!==-1)pred+=b[i2][0]; if(i1!==-1)pred-=b[i1][0];
+            Q+=(c.te-pred)**2/c.var;
+        });
+        return {est,Vb,lst,ref,VFull:V,Q,tau2:0,I2:Math.max(0,(Q-(k-p))/Q)*100};
+    },
+    solveDose:(con,txs)=>{ 
+        const k=con.length, p=txs.length, X=Matrix.zeros(k,p), Y=con.map(c=>[c.te]), V=Matrix.zeros(k,k);
+        con.forEach((c,i)=>{
+            V[i][i]=c.var; 
+            const i1=txs.indexOf(c.t1), i2=txs.indexOf(c.t2);
+            if(i2!==-1) X[i][i2]+=c.d2; if(i1!==-1) X[i][i1]-=c.d1;
+        });
+        const W=Matrix.inv(V), Xt=Matrix.t(X), Vb=Matrix.inv(Matrix.dot(Matrix.dot(Xt,W),X)), b=Matrix.dot(Matrix.dot(Vb,Matrix.dot(Xt,W)),Y);
+        const est={}; txs.forEach((t,i)=>est[t]={est:b[i][0],se:Math.sqrt(Vb[i][i])});
+        return {est,Vb,lst:txs,ref:'Slope'};
+    },
+    plotGraph:(con,txs)=>{
+        const n=txs.length,co={}; txs.forEach((t,i)=>{const a=2*Math.PI*i/n; co[t]={x:Math.cos(a),y:Math.sin(a)}});
+        const e=[]; con.forEach(c=>e.push({x:[co[c.t1].x,co[c.t2].x,null],y:[co[c.t1].y,co[c.t2].y,null],mode:'lines',line:{color:'#cbd5e1'}}));
+        Plotly.newPlot('nma-net',[...e,{x:Object.values(co).map(c=>c.x),y:Object.values(co).map(c=>c.y),mode:'markers+text',text:Object.keys(co),marker:{size:20,color:'#2563eb'},type:'scatter'}],{showlegend:false,xaxis:{showgrid:false,zeroline:false,showticklabels:false},yaxis:{showgrid:false,zeroline:false,showticklabels:false}});
+    },
+    plotForest:(res,ref)=>{
+        const t=Object.keys(res.est).filter(x=>x!==ref), x=t.map(k=>Math.exp(res.est[k].est));
+        Plotly.newPlot('nma-forest',[{y:t,x:x,mode:'markers',error_x:{type:'data',array:t.map((k,i)=>Math.exp(res.est[k].est+1.96*res.est[k].se)-x[i])}}],{xaxis:{type:'log'}});
+    },
+    league:(res,txs)=>{
+        let h=`<div class="net-matrix" style="grid-template-columns:repeat(${txs.length},1fr)">`;
+        txs.forEach((r,i)=>{ txs.forEach((c,j)=>{
+            if(i===j)h+=`<div class="net-cell diag">${r}</div>`;
+            else if(i>j){
+                const d=res.est[r].est-res.est[c].est, se=Math.sqrt(res.est[r].se**2+res.est[c].se**2), v=Math.exp(d);
+                const lo=Math.exp(d-1.96*se), hi=Math.exp(d+1.96*se);
+                h+=`<div class="net-cell ${lo>1||hi<1?'sig':''}">${v.toFixed(2)}<br><small>[${lo.toFixed(2)},${hi.toFixed(2)}]</small></div>`;
+            } else h+=`<div class="net-cell"></div>`;
+        })}); document.getElementById('nma-league').innerHTML=h+'</div>';
+    },
+    pscore:(res,txs)=>{
+        const p={}; txs.forEach(t1=>{ let s=0; txs.forEach(t2=>{if(t1!==t2)s+=Stat.pnorm((res.est[t1].est-res.est[t2].est)/Math.sqrt(res.est[t1].se**2+res.est[t2].se**2))}); p[t1]=s/(txs.length-1) });
+        const x=Object.keys(p),y=Object.values(p).map(v=>v*100);
+        Plotly.newPlot('nma-rank',[{x,y,type:'bar'}],{yaxis:{range:[0,100]}});
+    }
+};
+
+// --- CNMA ---
+const CNMA={
+    run:()=>{
+        if(!NMA.res) return alert("Run NMA first");
+        const net=NMA.net, comps=new Set(); net.txs.forEach(t=>t.split('+').forEach(c=>comps.add(c.trim())));
+        const cl=Array.from(comps).sort(), k=net.con.length, p=cl.length, X=Matrix.zeros(k,p);
+        net.con.forEach((c,i)=>{
+            const t2=c.t2.split('+').map(s=>s.trim()), t1=c.t1.split('+').map(s=>s.trim());
+            cl.forEach((cmp,j)=>{ if(t2.includes(cmp))X[i][j]+=1; if(t1.includes(cmp))X[i][j]-=1; });
+        });
+        const W=Matrix.inv(NMA.res.VFull), Xt=Matrix.t(X), Vb=Matrix.inv(Matrix.dot(Matrix.dot(Xt,W),X));
+        const Y=net.con.map(c=>[c.te]), b=Matrix.dot(Matrix.dot(Vb,Matrix.dot(Xt,W)),Y);
+        const y=cl, x=b.map(v=>Math.exp(v[0]));
+        document.getElementById('cnma-map').innerHTML=cl.map(c=>`<div style="border:1px solid #ccc;padding:4px">${c}</div>`).join('');
+        Plotly.newPlot('cnma-res',[{y,x,mode:'markers',error_x:{type:'data',array:b.map((v,i)=>Math.exp(v[0]+1.96*Math.sqrt(Vb[i][i]))-x[i])}}],{xaxis:{type:'log',title:'Component Effect'}});
+    }
+};
+
+// --- DTA ---
+const DTA={
+    run:()=>{
+        if(App.type!=='dta')return alert("Load DTA data");
+        const raw=App.getData(); if(raw.length<3)return;
+        const d=raw.map(r=>{const tp=Number(r.tp)+.5,fn=Number(r.fn)+.5,tn=Number(r.tn)+.5,fp=Number(r.fp)+.5,se=tp/(tp+fn),sp=tn/(tn+fp); return {ls:Math.log(se/(1-se)),lsp:Math.log(sp/(1-sp)),vs:1/tp+1/fn,vsp:1/tn+1/fp}});
+        const nll=p=>{
+            const [m1,m2,t1,t2,r]=p; if(t1<0||t2<0||Math.abs(r)>0.99)return 1e9;
+            let l=0; d.forEach(x=>{
+                const s1=x.vs+t1,s2=x.vsp+t2,s12=r*Math.sqrt(t1*t2), det=s1*s2-s12*s12; if(det<=0)return 1e9;
+                const d1=x.ls-m1,d2=x.lsp-m2; l+=0.5*Math.log(det)+0.5*(s2*d1*d1-2*s12*d1*d2+s1*d2*d2)/det;
+            }); return l;
+        };
+        const init=[d.reduce((a,b)=>a+b.ls,0)/d.length,d.reduce((a,b)=>a+b.lsp,0)/d.length,0.1,0.1,-0.5];
+        const res=Optim.nelderMead(nll,init); if(!res)return;
+        const [mS,mSp,tS,tSp,rho]=res;
+        const ps=Stat.invLogit(mS), psp=Stat.invLogit(mSp);
+        document.getElementById('dta-sens').innerText=(ps*100).toFixed(1)+'%';
+        document.getElementById('dta-spec').innerText=(psp*100).toFixed(1)+'%';
+        document.getElementById('dta-rho').innerText=rho.toFixed(2);
+        
+        // AUC Calc
+        const auc = 0.5 + 0.25 * (ps - (1-psp)) * (1 + (ps - (1-psp)));
+        document.getElementById('dta-auc').innerText = auc.toFixed(2);
+        
+        Plotly.newPlot('dta-sroc',[{x:d.map(r=>1-Stat.invLogit(r.lsp)),y:d.map(r=>Stat.invLogit(r.ls)),mode:'markers',name:'Studies'},{x:[1-psp],y:[ps],mode:'markers',marker:{size:15,color:'red'},name:'Pooled'}],{xaxis:{range:[0,1],title:'1-Spec'},yaxis:{range:[0,1],title:'Sens'}});
+        
+        // Coupled Forest (Added)
+        Plotly.newPlot('dta-forest', [
+            {y: raw.map(r=>r.id), x: d.map(x=>Stat.invLogit(x.ls)*100), mode:'markers', name:'Sens', marker:{color:'#2563eb'}, error_x:{type:'data', array: d.map(x=>(Stat.invLogit(x.ls+1.96*Math.sqrt(x.vs))-Stat.invLogit(x.ls))*100)}},
+            {y: raw.map(r=>r.id), x: d.map(x=>Stat.invLogit(x.lsp)*100), mode:'markers', name:'Spec', marker:{color:'#10b981'}, error_x:{type:'data', array: d.map(x=>(Stat.invLogit(x.lsp+1.96*Math.sqrt(x.vsp))-Stat.invLogit(x.lsp))*100)}}
+        ], {xaxis:{range:[0,100], title:'%'}, barmode:'group', title:'Sensitivity & Specificity'});
+    }
+};
+
+// --- GOSH ---
+const GOSH={
+    run:()=>{
+        document.getElementById('loader').style.display='grid';
+        setTimeout(()=>{
+            try{
+                const eff=App.getPairwise(); if(eff.length<5)throw new Error("Need 5+ studies");
+                const x=[],y=[];
+                for(let k=0;k<1000;k++){
+                    const sub=eff.filter(()=>Math.random()>0.3); if(sub.length<3)continue;
+                    try {
+                        const r=Pairwise.pool(sub,'fixed'); 
+                        if(r && !isNaN(r.est) && !isNaN(r.i2)) { x.push(r.est); y.push(r.i2*100); }
+                    } catch(e) {}
+                }
+                if(x.length === 0) throw new Error("GOSH simulation failed");
+                Plotly.newPlot('gosh-plot',[{x,y,mode:'markers',type:'scatter',marker:{opacity:0.3,size:4,color:'#2563eb'}}],{xaxis:{title:'Effect'},yaxis:{title:'I2'}});
+            }catch(e){alert(e.message)}
+            document.getElementById('loader').style.display='none';
+        },50);
+    }
+};
+
+// --- MCMC ---
+const MCMC={
+    run:()=>{
+        document.getElementById('loader').style.display='grid';
+        setTimeout(()=>{
+            const eff=App.getPairwise(); const Y=eff.map(e=>e.te), S=eff.map(e=>e.se);
+            const lp=(mu,tau)=>{if(tau<0)return -Infinity; let l=0; for(let i=0;i<Y.length;i++){const s2=S[i]**2+tau**2; l+=-0.5*Math.log(s2)-0.5*((Y[i]-mu)**2)/s2} return l-0.5*(mu**2)/100-0.5*tau**2};
+            let mu=0,tau=0.5,smu=[],curr=lp(mu,tau);
+            for(let i=0;i<5000;i++){
+                const mp=mu+(Math.random()-.5)*.5, tp=tau+(Math.random()-.5)*.2; const pp=lp(mp,tp);
+                if(Math.log(Math.random())<(pp-curr)){mu=mp;tau=tp;curr=pp} if(i>1000)smu.push(mu);
+            }
+            smu.sort((a,b)=>a-b); const med=smu[Math.floor(smu.length*.5)],lo=smu[Math.floor(smu.length*.025)],hi=smu[Math.floor(smu.length*.975)];
+            document.getElementById('mcmc-res').innerText=`${Math.exp(med).toFixed(2)} [${Math.exp(lo).toFixed(2)},${Math.exp(hi).toFixed(2)}]`;
+            Plotly.newPlot('mcmc-trace',[{y:smu,type:'scatter',mode:'lines'}]);
+            Plotly.newPlot('mcmc-dens',[{x:smu,type:'histogram'}]);
+            document.getElementById('loader').style.display='none';
+        },50);
+    }
+};
+
+// --- DOSE RESPONSE (Restored) ---
+const DoseResponse={
+    run:()=>{
+        const r=App.getData(); const s={}; r.forEach(x=>{if(!s[x.id])s[x.id]=[];s[x.id].push(x)});
+        const pts=[], slopes=[], w=[];
+        Object.keys(s).forEach(id=>{
+            const a=s[id].sort((x,y)=>Number(x.dose)-Number(y.dose)); const ref=a[0];
+            for(let i=1;i<a.length;i++){
+                const c=a[i], dd=Number(c.dose)-Number(ref.dose);
+                if(dd>0){
+                    const rr=(Number(c.e)/Number(c.n))/(Number(ref.e)/Number(ref.n)), lrr=Math.log(rr);
+                    const sl=lrr/dd, v=(1/Number(c.e)+1/Number(ref.e))/(dd**2);
+                    slopes.push(sl); w.push(1/v); pts.push({dose:Number(c.dose),lrr:lrr});
+                }
+            }
+        });
+        const sw=w.reduce((a,b)=>a+b,0), ps=slopes.reduce((a,x,i)=>a+x*w[i],0)/sw;
+        document.getElementById('dose-slope').innerText=ps.toFixed(4);
+        Plotly.newPlot('dose-plot',[{x:pts.map(p=>p.dose),y:pts.map(p=>p.lrr),mode:'markers'},{x:[0,Math.max(...pts.map(p=>p.dose))],y:[0,Math.max(...pts.map(p=>p.dose))*ps],mode:'lines'}]);
+    }
+};
+
+// --- RoBMA (Restored) ---
+const RoBMA={
+    models:[{n:"Fixed",t:"FE",b:0,p:.25},{n:"Random",t:"RE",b:0,p:.25},{n:"FE+Bias",t:"FE",b:1,p:.25},{n:"RE+Bias",t:"RE",b:1,p:.25}],
+    run:()=>{
+        const eff=App.getPairwise(), Y=eff.map(e=>e.te), V=eff.map(e=>e.w).map(w=>1/w);
+        const res=RoBMA.models.map(m=>{
+            const fit=RoBMA.fit(Y,V,m.t,m.b), bic=fit.k*Math.log(Y.length)+fit.dev;
+            return {...m, ...fit, lml:-0.5*bic};
+        });
+        const max=Math.max(...res.map(r=>r.lml)); let sum=0;
+        res.forEach(r=>{ r.bf=Math.exp(r.lml-max); r.w=r.bf*r.p; sum+=r.w; });
+        res.forEach(r=>r.w/=sum);
+        let av=0, avv=0; res.forEach(r=>av+=r.w*r.est); res.forEach(r=>avv+=r.w*(r.se**2+r.est**2)); avv-=av**2;
+        document.getElementById('robma-est').innerText=Math.exp(av).toFixed(3);
+        const h=res.map(r=>`<div class="robma-row"><div style="width:80px">${r.n}</div><div class="robma-bar"><div class="robma-fill" style="width:${r.w*100}%"></div></div><div>${(r.w*100).toFixed(0)}%</div></div>`).join('');
+        document.getElementById('robma-models').innerHTML=h;
+        Plotly.newPlot('robma-plot',[{x:res.map(r=>Math.exp(r.est)),y:res.map(r=>r.n),type:'scatter',mode:'markers',error_x:{type:'data',array:res.map(r=>Math.exp(r.est+1.96*r.se)-Math.exp(r.est))}},{x:[Math.exp(av)],y:['Avg'],mode:'markers',marker:{color:'red'}}]);
+    },
+    fit:(Y,V,t,b)=>{
+        let w=V.map(v=>1/v), tau2=0; if(b) w=w.map((x,i)=>Math.abs(Y[i]/Math.sqrt(V[i]))<1.96?x*0.5:x);
+        if(t==='RE'){ 
+            // Quick DL
+            const sw=w.reduce((a,b)=>a+b,0), sWy=w.reduce((a,x,i)=>a+x*Y[i],0), mu=sWy/sw;
+            const Q=w.reduce((a,x,i)=>a+x*(Y[i]-mu)**2,0);
+            tau2=Math.max(0,(Q-(Y.length-1))/(sw-w.reduce((a,x)=>a+x*x,0)/sw));
+        }
+        const we=V.map(v=>1/(v+tau2)); const sWe=we.reduce((a,b)=>a+b,0), est=we.reduce((a,x,i)=>a+x*Y[i],0)/sWe;
+        let dev=0; Y.forEach((y,i)=>dev+=((y-est)**2)/(V[i]+tau2));
+        return {est, se:Math.sqrt(1/sWe), k:(t==='RE'?2:1)+(b?1:0), dev};
+    }
+};
+
+// --- RoB & GRADE ---
+const RoB={init:()=>{const i=[...new Set(App.getData().map(r=>r.id))],d=['Rand','Dev','Miss','Meas','Rep'];let h=`<div class="rob-grid"><div class="rob-head">Study</div>${d.map(x=>`<div class="rob-head">${x}</div>`).join('')}`;i.forEach(id=>{h+=`<div class="rob-cell" style="justify-content:start;font-weight:bold">${id}</div>`;d.forEach(x=>h+=`<div class="rob-cell rob-low" onclick="RoB.t(this)"><div class="rob-circle">+</div></div>`)});document.getElementById('rob-table').innerHTML=h+'</div>';RoB.s()},t:e=>{if(e.classList.contains('rob-low')){e.className='rob-cell rob-some';e.firstChild.innerText='?'}else if(e.classList.contains('rob-some')){e.className='rob-cell rob-high';e.firstChild.innerText='-'}else{e.className='rob-cell rob-low';e.firstChild.innerText='+'}RoB.s()},s:()=>{const c={L:0,S:0,H:0},el=document.querySelectorAll('.rob-grid .rob-cell:not(:nth-child(6n+1))');el.forEach(e=>{if(e.classList.contains('rob-low'))c.L++;else if(e.classList.contains('rob-some'))c.S++;else c.H++});const t=el.length;Plotly.newPlot('rob-summary',[{x:[c.L/t,c.S/t,c.H/t],y:[''],orientation:'h',type:'bar',marker:{color:['#4ade80','#facc15','#f87171']},width:0.5}],{barmode:'stack',xaxis:{range:[0,1]}})}};
+const GRADE={calc:()=>{let s=parseInt(document.getElementById('grade-base').value);document.querySelectorAll('#grade-box input:checked').forEach(c=>s+=parseInt(c.value));const r=document.getElementById('grade-res');if(s>=4){r.innerText='HIGH';r.style.color='#166534'}else if(s===3){r.innerText='MODERATE';r.style.color='#15803d'}else if(s===2){r.innerText='LOW';r.style.color='#ca8a04'}else{r.innerText='VERY LOW';r.style.color='#b91c1c'}}};
+
+window.onload = App.init;
+</script>
+</body>
+</html>
